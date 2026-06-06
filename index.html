@@ -61,10 +61,14 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // Умный выбор путей базы данных для Canvas и локальной работы
+        // Умный выбор путей базы данных (ГЛАВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ)
         const getPath = (col) => {
-            const currentAppId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : 'exam-sql-app';
-            return `artifacts/${currentAppId}/public/data/${col}`;
+            // Если запуск внутри встроенного редактора платформы
+            if (typeof __app_id !== 'undefined' && __app_id) {
+                return `artifacts/${__app_id}/public/data/${col}`;
+            }
+            // Если запуск на GitHub/Netlify - используем корневые коллекции (где лежат ваши данные)
+            return col;
         };
 
         // ==========================================
@@ -148,6 +152,7 @@
         function App() {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
+            const [globalError, setGlobalError] = useState('');
             const [config, setConfig] = useState(null);
             const [view, setView] = useState('student_start'); 
             const [studentData, setStudentData] = useState({ name: '', group: '' });
@@ -164,6 +169,11 @@
                         }
                     } catch (e) {
                         console.error("Auth error:", e);
+                        if (e.code === 'auth/unauthorized-domain') {
+                            setGlobalError('Ошибка: Домен сайта не разрешен в настройках Firebase (Authorized domains).');
+                        } else {
+                            setGlobalError('Не удалось подключиться к базе данных: ' + e.message);
+                        }
                         setLoading(false);
                     }
                 };
@@ -219,6 +229,16 @@
                 }
                 setLoading(false);
             };
+
+            if (globalError) return (
+                <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+                    <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center border-t-8 border-red-500">
+                        <div className="text-6xl mb-4">⚠️</div>
+                        <h2 className="text-2xl font-bold text-slate-800 mb-4">Ошибка подключения</h2>
+                        <p className="text-slate-600 font-medium mb-4">{globalError}</p>
+                    </div>
+                </div>
+            );
 
             if (loading) return (
                 <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-500">
@@ -537,12 +557,17 @@
             const [results, setResults] = useState([]);
             const [filterGroup, setFilterGroup] = useState('Все');
             const [deleteId, setDeleteId] = useState(null);
+            const [dbError, setDbError] = useState('');
 
             useEffect(() => {
                 if(!user) return;
                 const unsub = db.collection(getPath('results')).orderBy('timestamp', 'desc').onSnapshot(snap => {
                     setResults(snap.docs.map(d => ({id: d.id, ...d.data(), expanded: false})));
-                }, err => console.error(err));
+                    setDbError('');
+                }, err => {
+                    console.error(err);
+                    setDbError(err.message);
+                });
                 return () => unsub();
             }, [user]);
 
@@ -564,6 +589,10 @@
 
             const filtered = filterGroup === 'Все' ? results : results.filter(r => r.group === filterGroup);
             const avgScore = filtered.length ? (filtered.reduce((sum, r) => sum + r.score, 0) / filtered.length).toFixed(1) : 0;
+
+            if (dbError) {
+                return <div className="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-200 shadow-sm"><b>Ошибка загрузки результатов:</b> {dbError}</div>;
+            }
 
             return (
                 <div className="fade-in max-w-6xl mx-auto">
@@ -653,12 +682,17 @@
             const [questions, setQuestions] = useState([]);
             const [editingId, setEditingId] = useState(null);
             const [deleteId, setDeleteId] = useState(null);
+            const [dbError, setDbError] = useState('');
 
             useEffect(() => {
                 if(!user) return;
                 const unsub = db.collection(getPath('questions')).orderBy('num').onSnapshot(snap => {
                     setQuestions(snap.docs.map(d => ({id: d.id, ...d.data()})));
-                }, err => console.error(err));
+                    setDbError('');
+                }, err => {
+                    console.error(err);
+                    setDbError(err.message);
+                });
                 return () => unsub();
             }, [user]);
 
@@ -693,6 +727,10 @@
                 await db.collection(getPath('questions')).doc(q1.id).update({num: q2.num});
                 await db.collection(getPath('questions')).doc(q2.id).update({num: q1.num});
             };
+
+            if (dbError) {
+                return <div className="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-200 shadow-sm"><b>Ошибка загрузки вопросов:</b> {dbError}</div>;
+            }
 
             return (
                 <div className="fade-in max-w-4xl mx-auto pb-10">
