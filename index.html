@@ -55,8 +55,8 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // ТЕПЕРЬ ДАННЫЕ ИДУТ СТРОГО В КОРЕНЬ БАЗЫ (без artifacts)
-        const getPath = (col) => col; 
+        // Указываем точный путь до вашей базы данных, как на скриншоте
+        const getPath = (col) => `artifacts/exam-sql-app/public/data/${col}`; 
 
         // ==========================================
         // 2. ИСХОДНЫЕ ВОПРОСЫ (50 вопросов по SQL)
