@@ -5,17 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Экзаменационный тест по SQL</title>
     
-    <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     
-    <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Firebase SDK Compat (v10) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -36,7 +32,7 @@
 
     <script type="text/babel">
         // ==========================================
-        // 1. НАСТРОЙКИ FIREBASE
+        // 1. НАСТРОЙКИ FIREBASE (НОВЫЕ ПРАВИЛЬНЫЕ ДАННЫЕ)
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyBWEpo9E8BuQBemxPqIhh98XC4yTA6wesc",
@@ -50,9 +46,7 @@
 
         // Инициализация Firebase
         let app;
-        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-             app = firebase.initializeApp(JSON.parse(__firebase_config));
-        } else if (!firebase.apps.length) {
+        if (!firebase.apps.length) {
              app = firebase.initializeApp(firebaseConfig);
         } else {
              app = firebase.app();
@@ -61,18 +55,11 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // Умный выбор путей базы данных (ГЛАВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ)
-        const getPath = (col) => {
-            // Если запуск внутри встроенного редактора платформы
-            if (typeof __app_id !== 'undefined' && __app_id) {
-                return `artifacts/${__app_id}/public/data/${col}`;
-            }
-            // Если запуск на GitHub/Netlify - используем корневые коллекции (где лежат ваши данные)
-            return col;
-        };
+        // ТЕПЕРЬ ДАННЫЕ ИДУТ СТРОГО В КОРЕНЬ БАЗЫ (без artifacts)
+        const getPath = (col) => col; 
 
         // ==========================================
-        // 2. ИСХОДНЫЕ ВОПРОСЫ (ЗАГРУЖАЮТСЯ 1 РАЗ ПРИ ПУСТОЙ БД)
+        // 2. ИСХОДНЫЕ ВОПРОСЫ (50 вопросов по SQL)
         // ==========================================
         const INITIAL_QUESTIONS = [
             { num: 1, text: "Вопрос 1. Какая команда используется для полного удаления таблицы вместе со всей её структурой и данными из базы данных?", options: [{text: "A) ALTER TABLE", isCorrect: false}, {text: "B) CLEAR TABLE", isCorrect: false}, {text: "C) DROP TABLE", isCorrect: true}, {text: "D) DELETE TABLE", isCorrect: false}, {text: "E) REMOVE TABLE", isCorrect: false}] },
@@ -161,12 +148,7 @@
             useEffect(() => {
                 const initFirebase = async () => {
                     try {
-                        // Авторизация
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await auth.signInWithCustomToken(__initial_auth_token);
-                        } else {
-                            await auth.signInAnonymously();
-                        }
+                        await auth.signInAnonymously();
                     } catch (e) {
                         console.error("Auth error:", e);
                         if (e.code === 'auth/unauthorized-domain') {
@@ -210,7 +192,6 @@
                     }
                     setConfig(doc.data());
 
-                    // Инициализация вопросов
                     const qsRef = db.collection(getPath('questions'));
                     const qs = await qsRef.limit(1).get();
                     if (qs.empty) {
@@ -219,7 +200,6 @@
                         }
                     }
 
-                    // Подписка на настройки
                     settingsRef.onSnapshot(snap => {
                         if (snap.exists) setConfig(snap.data());
                     });
@@ -256,16 +236,13 @@
                     {view === 'admin_login' && <AdminLogin config={config} onSuccess={() => setView('admin_panel')} onBack={() => setView('student_start')} />}
                     {view === 'admin_panel' && <AdminPanel config={config} onLogout={() => setView('student_start')} user={user} />}
 
-                    {/* Секретная кнопка входа админа */}
-                    {view === 'student_start' && (
-                        <div 
-                            className="fixed bottom-2 right-2 text-2xl opacity-5 hover:opacity-100 cursor-pointer transition-all duration-300 z-50 p-2"
-                            title="Вход для преподавателя"
-                            onClick={() => setView('admin_login')}
-                        >
-                            ❤️
-                        </div>
-                    )}
+                    <div 
+                        className="fixed bottom-2 right-2 text-2xl opacity-5 hover:opacity-100 cursor-pointer transition-all duration-300 z-50 p-2"
+                        title="Вход для преподавателя"
+                        onClick={() => setView('admin_login')}
+                    >
+                        ❤️
+                    </div>
                 </div>
             );
         }
@@ -301,7 +278,7 @@
                 <div className="min-h-screen flex items-center justify-center p-4 fade-in">
                     <form onSubmit={handleStart} className="bg-white p-8 md:p-10 rounded-3xl shadow-xl max-w-md w-full">
                         <h2 className="text-3xl font-bold text-center text-blue-600 mb-2">Тестирование</h2>
-                        <h3 className="text-md text-center text-slate-500 mb-8 border-b pb-6">Базы данных и язык SQL (50 вопросов)</h3>
+                        <h3 className="text-md text-center text-slate-500 mb-8 border-b pb-6">Базы данных и язык SQL</h3>
                         
                         {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm font-medium border border-red-100">{error}</div>}
 
@@ -396,8 +373,6 @@
 
             return (
                 <div className="max-w-4xl mx-auto p-4 pt-8 fade-in">
-                    
-                    {/* Липкая шапка с прогрессом */}
                     <div className="bg-white rounded-2xl shadow-sm p-5 mb-8 sticky top-4 z-10 border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="flex flex-col items-center md:items-start w-full md:w-auto">
                             <div className="font-bold text-slate-800 text-lg">{studentData.name}</div>
@@ -520,7 +495,6 @@
 
             return (
                 <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row fade-in">
-                    {/* Sidebar */}
                     <div className="w-full md:w-64 bg-slate-900 text-slate-300 flex flex-col shadow-2xl z-20">
                         <div className="p-6 font-bold text-xl text-white border-b border-slate-800 flex items-center gap-3">
                             <span className="text-2xl">🎓</span> Админ-панель
@@ -541,7 +515,6 @@
                         </div>
                     </div>
                     
-                    {/* Content */}
                     <div className="flex-1 p-6 md:p-10 overflow-y-auto h-screen bg-slate-50">
                         {activeTab === 'results' && <AdminResults config={config} user={user} />}
                         {activeTab === 'questions' && <AdminQuestions user={user} />}
@@ -591,7 +564,7 @@
             const avgScore = filtered.length ? (filtered.reduce((sum, r) => sum + r.score, 0) / filtered.length).toFixed(1) : 0;
 
             if (dbError) {
-                return <div className="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-200 shadow-sm"><b>Ошибка загрузки результатов:</b> {dbError}</div>;
+                return <div className="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-200 shadow-sm"><b>Ошибка загрузки результатов:</b> {dbError} <br/> (Проверьте правила базы данных в Firebase -> Rules)</div>;
             }
 
             return (
@@ -745,14 +718,12 @@
                         {questions.map((q, index) => (
                             <div key={q.id} className={`bg-white p-5 md:p-6 rounded-2xl shadow-sm border transition-all ${editingId === q.id ? 'border-blue-300 ring-4 ring-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
                                 <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-                                    {/* Управление порядком */}
                                     <div className="flex md:flex-col items-center justify-center gap-3 border-b md:border-b-0 md:border-r border-slate-100 pb-3 md:pb-0 md:pr-6 shrink-0">
                                         <button onClick={()=>moveQuestion(index, -1)} disabled={index===0} className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-slate-50 transition-colors">▲</button>
                                         <span className="font-black text-xl text-slate-300 w-8 text-center">{q.num}</span>
                                         <button onClick={()=>moveQuestion(index, 1)} disabled={index===questions.length-1} className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-slate-50 transition-colors">▼</button>
                                     </div>
 
-                                    {/* Контент вопроса */}
                                     <div className="flex-1 w-full">
                                         {editingId === q.id ? (
                                             <QuestionEditor q={q} onSave={(data) => updateQuestion(q.id, data)} onCancel={() => setEditingId(null)} />
@@ -887,7 +858,6 @@
                 <div className="fade-in max-w-4xl mx-auto space-y-6">
                     <h2 className="text-3xl font-bold text-slate-800 mb-8">Настройки системы</h2>
 
-                    {/* Статус теста */}
                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-5">
                             <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl ${config.isOpen ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
@@ -904,7 +874,6 @@
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-6">
-                        {/* Группы */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col">
                             <div className="flex items-center gap-3 mb-6">
                                 <span className="text-2xl">👥</span>
@@ -925,7 +894,6 @@
                             </div>
                         </div>
 
-                        {/* Доступы */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col">
                             <div className="flex items-center gap-3 mb-6">
                                 <span className="text-2xl">🔑</span>
